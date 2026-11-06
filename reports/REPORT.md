@@ -1,6 +1,6 @@
 # Báo cáo bài thực hành Ngày 1 – Đọc prediction YOLO11 để hiểu định dạng nhãn
 
-**Ngày chạy:**6/11/2026
+**Ngày chạy:** 6/11/2026
 
 **Runtime Colab:** CPU/GPU
 
@@ -39,14 +39,19 @@ Chỉ dùng ảnh `sample_id = traffic`, lấy dòng `rank = 1`.
 
 1. Chép record hạng 1: `class_id`468 ; `class_name`=cab ; `rank`=1 ; `score`=0.510915 ; `taxonomy_name`="ImageNet-1K"
 2. Record này nói về **cả bức ảnh** hay về **một vật thể riêng** trong ảnh? Vì sao bạn nghĩ vậy?
+
 Record này mô tả cả bức ảnh. Vì record đang thực hiện bài toán Image Classification, phân tích toàn bộ nội dung ảnh và đưa ra danh sách các lớp có khả năng phù hợp 
 3. Danh sách tên lớp (class list) do đâu mà có: model tự nghĩ ra, hay đi kèm taxonomy/checkpoint?
+
 Danh sách tên lớp được xác định bởi taxonomy đi kèm checkpoint đã huấn luyện, cụ thể là ImageNet-1K. Model không tự tạo ra tên lớp mới mà dự đoán trong tập 1.000 lớp đã được định nghĩa trước.
 4. Vì sao cần ghi cả `class_id`, `class_name` và `taxonomy_name`, không chỉ ghi mỗi tên lớp?
+
 Cần lưu cả ba trường để đảm bảo khả năng nhận diện và truy xuất thông tin chính xác. class_id là mã định danh lớp, class_name giúp con người hiểu nội dung dự đoán, còn taxonomy_name xác định hệ thống phân loại đang được sử dụng. Điều này giúp tránh nhầm lẫn khi các model sử dụng những taxonomy khác nhau hoặc có cách đánh số class khác nhau.
 5. Nếu trong ảnh có nhiều vật / nhiều chủ đề, guideline cần nói rõ điều gì để người gán nhãn chọn **một** lớp?
+
 Cần lưu cả ba trường để đảm bảo khả năng nhận diện và truy xuất thông tin chính xác. class_id là mã định danh lớp, class_name giúp con người hiểu nội dung dự đoán, còn taxonomy_name xác định hệ thống phân loại đang được sử dụng. Điều này giúp tránh nhầm lẫn khi các model sử dụng những taxonomy khác nhau hoặc có cách đánh số class khác nhau.
 6. Vì sao không được lấy `score` của model làm ground truth?
+
 Score chỉ thể hiện mức độ tin cậy của model đối với prediction, không đảm bảo prediction đó chính xác. Trong kết quả thực tế, lớp cab có score 0.510915, nhưng con số này không chứng minh rằng cab là nhãn chuẩn của ảnh. Ground truth phải được xác định dựa trên nội dung ảnh và guideline, không được lấy trực tiếp từ prediction hoặc score của model.
 ## 2. Phát hiện vật thể
 
@@ -56,17 +61,22 @@ Số lượng prediction theo ngưỡng: xem output ô so sánh `0.20` / `0.35` 
 
 1. Chép một record: `class_name`="person" ; `score`=0.912625 ; `bbox_xyxy`=[385.33,69.24,498.92,348.92] ; `bbox_width`=113.58 ; `bbox_height`=279.68
 2. Giải thích box bằng lời thường: góc trên-trái ở đâu, góc dưới-phải ở đâu, rộng/cao bao nhiêu pixel?
+
 Ta có (x_min, y_min) xác định góc trên bên trái và (x_max, y_max) xác định góc dưới bên phải.Chiều rộng và chiều cao của box lần lượt được tính bằng hiệu tọa độ X và Y tương ứng.
 Ví dụ như trên record trên, góc trên trái có tọa độ (385.33,69.24), góc dưới phải có tọa độ (498.92,348.92), rộng 113.58 pixel và cao 279.68 pixel
 3. Chọn hai ngưỡng (vd. 0.20 và 0.60). Mỗi ngưỡng có bao nhiêu prediction?
+
 Ngưỡng 0.2: có 17 predictions
 Ngưỡng 0.35: có 11 vật thể
 Ngưỡng 0.6: có 6 predictions
 4. Khi hạ ngưỡng (giữ nhiều hộp hơn), người **reviewer** phải làm thêm việc gì?
+
 Cần kiểm tra nhiều bounding box hơn để phát hiện và loại bỏ các box không tương ứng với vật thể thực tế, kiểm tra class bị dự đoán nhầm và xác định những vật thể bị bỏ sót.
 5. Viết **một quy tắc box** để người gán nhãn làm theo (áp dụng được cho nhiều ảnh, không chỉ ảnh này).
+
 Người gán nhãn phải vẽ Bounding Box bao quanh toàn bộ phần vật thể có thể quan sát được, sử dụng hình chữ nhật nhỏ nhất có thể nhưng vẫn chứa đầy đủ vật thể. Box không được bao gồm quá nhiều vùng nền không liên quan. Đối với vật thể bị che khuất, chỉ vẽ theo phần đường biên có thể quan sát được và áp dụng thống nhất quy định về vật thể bị che trong guideline.
 6. Trên ảnh `kitchen`, chỉ ra **một** vật bị che khuất hoặc cắt mép. Bạn sẽ viết thành quy tắc trong guideline, hay đưa lên hỏi Lab Coach (escalation)? Vì sao?
+
 Trên ảnh kitchen, có một vật thể bị che khuất một phần nên không thể quan sát đầy đủ đường biên. Tôi lựa chọn đưa trường hợp này lên Lab Coach để xác nhận cách xử lý thay vì tự suy đoán nhãn. Sau khi có hướng dẫn thống nhất, quy tắc xử lý có thể được bổ sung vào guideline để các Annotator áp dụng nhất quán.
 
 ## 3. Phân đoạn theo từng đối tượng
@@ -76,12 +86,16 @@ Chỉ dùng ảnh `sample_id = kitchen`. Chọn **một** record.
 
 1. Chép một record: `instance_id`="kitchen-009" ; `class_name`="person" ; `score`=0.431438 ; số điểm polygon=`polygon_point_count`=65 ; 3–5 điểm đầu của `polygon_xy`=[1.0,264.0],[1.0,309.0],[5.0,309.0],[6.0,308.0],[15.0,308.0]
 2. So với box, polygon cho thêm thông tin gì về hình dạng vật thể?
+
 Vì vậy, polygon cung cấp thêm thông tin về hình dạng, đường viền và diện tích thực tế của vật thể. Nó mô tả vật thể sát hơn so với box, đặc biệt với những vật thể có hình dạng không vuông vức hoặc nằm gần vật thể khác.
 3. `instance_id` dùng để làm gì? Nó **không** phải class ID và **không** phải tracking ID — bạn hiểu câu này thế nào?
+
 instance_id là mã định danh riêng cho từng đối tượng được phát hiện trong một ảnh.
 4. Viết **một quy tắc vẽ biên mask** để người gán nhãn làm theo.
+
 Người gán nhãn phải vẽ polygon bám sát đường biên nhìn thấy được của từng vật thể, không bao gồm vùng nền bên ngoài. Khi vật thể bị che khuất, chỉ vẽ đến đường biên còn nhìn thấy, không tự suy đoán hoặc vẽ phần bị che. Các vật thể riêng biệt phải được tạo mask riêng, không gộp chung dù chúng chạm nhau.
 5. Trên ảnh `kitchen`, chỉ ra **một** chỗ biên mờ / hai vật chạm nhau / bị che. Bạn dùng guideline hay escalation? Vì sao?
+
 Vị trí được chọn: Hai chiếc bát màu hồng ở góc dưới bên trái ảnh, trên mặt bàn
 Vấn đề: Hai chiếc bát nằm sát nhau và một phần đường viền bị che khuất, khiến ranh giới giữa hai vật thể không hoàn toàn rõ ràng.
 Cách xử lý và lý do:
@@ -106,8 +120,10 @@ Lab hôm nay chỉ **xem prediction**. Chuỗi dưới đây là vòng đời pr
 ## 5. An toàn dữ liệu
 
 1. Quy tắc bảo vệ dữ liệu của bạn cho bài lab này là gì? (viết 1 câu)
+
 Tôi không chia sẻ, sao chép hoặc sử dụng dữ liệu cá nhân ngoài mục đích của bài lab và luôn tuân thủ quy định bảo mật.
 2. Nếu gặp ảnh hoặc dữ liệu không đúng phạm vi, bạn sẽ dừng và báo cho ai?
+
 Tôi sẽ dừng xử lý, không tự ý sử dụng và báo ngay cho Reviewer/QC để được hướng dẫn.
 
 ## 6. Checklist trước khi nộp link repo
